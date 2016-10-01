@@ -1,3 +1,5 @@
+pragma solidity ^0.4.0;
+
 contract HedgeContract1 {
   struct Investment {
     address investor;
@@ -12,7 +14,7 @@ contract HedgeContract1 {
   address public buyAgent;
   uint public minimumInvestment;
 
-  mapping(address => Investment[]) public investments;
+  mapping(address => Investment) public investments;
 
   // Events - publicize actions to external listeners
   event InvestmentMade(address accountAddress, uint amount);
@@ -31,25 +33,28 @@ contract HedgeContract1 {
       address _buyAgent
     ) {
       // Set contract creator when creating the contract
-      creator = msg.sender
+      creator = msg.sender;
   }
 
   // Set new invest agent - only owner
-  function setInvestAgent(address newInvestAgent) {
-    onlyOwner(creator)
-    investAgent = newInvestAgent
+  function setInvestAgent(address newInvestAgent)
+    onlyBy(creator)
+  {
+    investAgent = newInvestAgent;
   }
 
   // Set new buy agent - only owner
-  function setBuyAgent(address newBuyAgent) {
-    onlyOwner(creator)
-    buyAgent = newBuyAgent
+  function setBuyAgent(address newBuyAgent)
+    onlyBy(creator)
+  {
+    buyAgent = newBuyAgent;
   }
 
   // Set new minimum investment - only owner
-  function setMinimumInvestment(uint newMinimumInvestment) {
-    onlyOwner(creator)
-    minimumInvestment = newMinimumInvestment
+  function setMinimumInvestment(uint newMinimumInvestment)
+    onlyBy(creator)
+  {
+    minimumInvestment = newMinimumInvestment;
   }
 
   // Create a new investment
@@ -63,9 +68,9 @@ contract HedgeContract1 {
 
   // Investment opportunity - only agent
   // For testing invest agent decide to invest or not
-  function investOffer(address account, uint amount, bool invest) {
+  function investOffer(address account, uint amount, bool invest)
     onlyBy(investAgent)
-
+  {
     // TODO - implement criteria here
 
     if (invest) {
@@ -76,7 +81,9 @@ contract HedgeContract1 {
   }
 
   // After investment bug agent calls this
-  function afterInvestOffer(address account, uint amount) {
+  function afterInvestOffer(address account, uint amount)
     onlyBy(investAgent)
+  {
     investments[account].nowValue = amount;
+  }
 }
