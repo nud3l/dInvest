@@ -86,4 +86,9 @@ contract HedgeContract1 {
   {
     investments[account].nowValue = amount;
   }
+
+  // Kill the contract and send the funds to creator
+  function kill() {
+    if (msg.sender == creator) suicide(creator);
+  }
 }
