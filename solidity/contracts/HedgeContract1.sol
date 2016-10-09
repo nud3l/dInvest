@@ -54,6 +54,7 @@ contract HedgeContract1 {
   function setMinimumInvestment(uint newMinimumInvestment)
     onlyBy(creator)
   {
+    // TODO - If its the same do not update
     minimumInvestment = newMinimumInvestment;
   }
 
@@ -80,7 +81,7 @@ contract HedgeContract1 {
     }
   }
 
-  // After investment bug agent calls this
+  // After investment buy agent calls this
   function afterInvestOffer(address account, uint amount)
     onlyBy(investAgent)
   {
