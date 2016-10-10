@@ -83,7 +83,7 @@ contract HedgeContract1 {
 
   // After investment buy agent calls this
   function afterInvestOffer(address account, uint amount)
-    onlyBy(investAgent)
+    onlyBy(buyAgent)
   {
     investments[account].nowValue = amount;
   }
