@@ -17,7 +17,8 @@ contract HedgeContract1 {
   mapping(address => Investment) public investments;
 
   // Events - publicize actions to external listeners
-  event InvestmentMade(address accountAddress, uint amount);
+  event InvestmentOfferByBot(address accountAddress, uint amount);
+  event NewInvestmentByUser(address accountAddress, uint amount);
 
   // Helper function to guard functions
   modifier onlyBy(address _account)
@@ -64,7 +65,12 @@ contract HedgeContract1 {
       throw;
     }
 
+    // TODO - existing investment?
+    // 3, 1 to change
     investments[msg.sender] = Investment(msg.sender, msg.value, msg.value, 3, 1);
+
+    // Publish event
+    NewInvestmentByUser(msg.sender, msg.value);
   }
 
   // Investment opportunity - only agent
@@ -75,7 +81,7 @@ contract HedgeContract1 {
     // TODO - implement criteria here
 
     if (invest) {
-      InvestmentMade(account, amount); // fire event
+      InvestmentOfferByBot(account, amount); // fire event
     } else {
       throw;
     }
@@ -88,8 +94,35 @@ contract HedgeContract1 {
     investments[account].nowValue = amount;
   }
 
+  // Withdrawal by user
+  function withdrawalUser(uint withdrawAmount) public returns (bool)
+  {
+      if (investments[msg.sender].nowValue >= withdrawAmount && withdrawAmount < investments[msg.sender].withdrawalLimit) {
+        // Reduce balance before sending
+        investments[msg.sender].nowValue -= withdrawAmount;
+
+        if(!msg.sender.send(withdrawAmount)) {
+          // Failed send
+          investments[msg.sender].nowValue += withdrawAmount;
+          return false;
+        }
+
+        return true;
+      }
+
+      return false;
+  }
+
   // Kill the contract and send the funds to creator
+  // TODO - This has to be improved - send funds according to nowValue back to investors
   function kill() {
     if (msg.sender == creator) suicide(creator);
+  }
+
+  // Get investment details from investments mapping
+  function getInvestmentCurrentValue(address investor) constant
+    returns(uint nowValue)
+  {
+    nowValue = investments[investor].nowValue;
   }
 }
