@@ -127,6 +127,7 @@ def create_weights(stocks):
         return weight
 
 
+# This needs to go to TradeHandler
 def rebalance(context, data):
     # Exit all positions before starting new ones
     for stock in context.portfolio.positions:
@@ -141,17 +142,17 @@ def rebalance(context, data):
     # Rebalance all stocks to target weights
     for stock in context.fundamental_df:
         if data.can_trade(stock):
-          if weight != 0:
-              code = context.sector_mappings[
-                   context.fundamental_df[stock]['morningstar_sector_code']
-              ]
+            if weight != 0:
+                code = context.sector_mappings[
+                     context.fundamental_df[stock]['morningstar_sector_code']
+                ]
 
-              # log.info(
-              #    "Ordering %0.0f%% percent of %s in %s" %
-              #    (weight * 100, stock.symbol, code)
-              #)
+                # log.info(
+                #    "Ordering %0.0f%% percent of %s in %s" %
+                #    (weight * 100, stock.symbol, code)
+                # )
 
-          order_target_percent(stock, weight)
+            order_target_percent(stock, weight)
 
 
 def record_positions(context, data):
