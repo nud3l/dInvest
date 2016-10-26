@@ -1,18 +1,22 @@
 """
 Trading Strategy using Fundamental Data
-
+Adjusted Graham Fundamentals trading algorithm (based on https://www.quantopian.com/help#fundamental-data)
 1. Filter the top 50 companies by market cap
-2. Find the top two sectors that have the highest average PE ratio
-3. Every month exit all the positions before entering new ones
-4. Log the positions that we need
+2. Exclude companies based on ESC criteria
+3. Find the top two sectors that have the highest average PE ratio
+4. Every week exit all the positions before entering new ones
+5. Log the positions that we need
 """
 from zipline.api import (
+    attach_pipeline,
+    pipeline_output,
     order_target_percent,
     record,
     schedule_function,
     date_rules,
     time_rules,
     )
+from zipline.pipeline import Pipeline
 import numpy as np
 
 
@@ -23,6 +27,9 @@ def initialize(context):
     context.days = 0
     # Number of sectors to go long in
     context.sect_numb = 2
+
+    # Register pipeline
+    attach_pipeline(make_pipeline(), 'fundamentals')
 
     # Sector mappings
     context.sector_mappings = {
@@ -39,14 +46,29 @@ def initialize(context):
        311.0: "Technology"
     }
 
-    # Rebalance monthly on the first day of the month at market open
+    # Rebalance monthly on the first day of the week at market open
     schedule_function(rebalance,
-                      date_rule=date_rules.month_start(),
+                      date_rule=date_rules.week_start(),
                       time_rule=time_rules.market_open())
 
     schedule_function(record_positions,
-                      date_rule=date_rules.month_start(),
+                      date_rule=date_rules.week_start(),
                       time_rule=time_rules.market_close())
+
+
+#  Create a fundamentals data pipeline
+def make_pipeline():
+    pe_ratio = 3
+    sector_code = 3
+    market_cap = 3
+    fundamentals = Pipeline(
+        columns={
+            'morningstar_sector_code': sector_code,
+            'pe_ratio': pe_ratio,
+        }
+    )
+    return fundamentals
+
 
 """
 Called before the start of each trading day.  Runs the
@@ -56,24 +78,28 @@ context.fundamentals_df.
 
 
 def before_trading_start(context, data):
-
+    # May need to increase the number of stocks
     num_stocks = 50
 
     # Setup SQLAlchemy query to screen stocks based on PE ratio
     # and industry sector. Then filter results based on market cap
     # and shares outstanding. We limit the number of results to
     # num_stocks and return the data in descending order.
-    fundamental_df = get_fundamentals(
-        query(
-            # put your query in here by typing "fundamentals."
-            fundamentals.valuation_ratios.pe_ratio,
-            fundamentals.asset_classification.morningstar_sector_code
-        )
-        .filter(fundamentals.valuation.market_cap != None)
-        .filter(fundamentals.valuation.shares_outstanding != None)
-        .order_by(fundamentals.valuation.market_cap.desc())
-        .limit(num_stocks)
-    )
+
+    context.pipeline_data = pipeline_output('fundamentals')
+    fundamental_df = make_pipeline()
+
+    #fundamental_df = get_fundamentals(
+    #    query(
+    #        # put your query in here by typing "fundamentals."
+    #        fundamentals.valuation_ratios.pe_ratio,
+    #        fundamentals.asset_classification.morningstar_sector_code
+    #    )
+    #    .filter(fundamentals.valuation.market_cap != None)
+    #    .filter(fundamentals.valuation.shares_outstanding != None)
+    #    .order_by(fundamentals.valuation.market_cap.desc())
+    #    .limit(num_stocks)
+    #)
 
     # Find sectors with the highest average PE
     sector_pe_dict = {}
