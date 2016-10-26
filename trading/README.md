@@ -49,6 +49,16 @@ There is a full tutorial on the installation of Zipline also for other OS [here]
 
 
 ## TODO
-- Value investment criteria
-- Value investment algorithm implementation
-- Smart contracts to integrate with python
+- contract
+  - Import exclude list from contract based on sections
+  - Integrate with local running geth server account
+- recommender
+  - Integrate fundamentals data as pipeline
+  - PE and sections need to be defined
+  - Enable daily change of available capital
+- trader
+  - Enable daily execution via cronjob
+- analysis
+  - Create compatible pickle files for pyfolio
+  - Sample analysis of buyapple
+  - Sample analysis of fundamentals

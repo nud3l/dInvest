@@ -29,8 +29,10 @@ def initialize(context):
     context.sect_numb = 2
 
     # Register pipeline
-    attach_pipeline(make_pipeline(), 'fundamentals')
+    fundamental_df = make_pipeline()
+    attach_pipeline(fundamental_df, 'fundamentals')
 
+    # TODO: Get section mappings from pipeline and exclude unwanted industries
     # Sector mappings
     context.sector_mappings = {
        101.0: "Basic Materials",
@@ -58,38 +60,7 @@ def initialize(context):
 
 #  Create a fundamentals data pipeline
 def make_pipeline():
-    pe_ratio = 3
-    sector_code = 3
-    market_cap = 3
-    fundamentals = Pipeline(
-        columns={
-            'morningstar_sector_code': sector_code,
-            'pe_ratio': pe_ratio,
-        }
-    )
-    return fundamentals
-
-
-"""
-Called before the start of each trading day.  Runs the
-fundamentals query and saves the matching securities into
-context.fundamentals_df.
-"""
-
-
-def before_trading_start(context, data):
-    # May need to increase the number of stocks
-    num_stocks = 50
-
-    # Setup SQLAlchemy query to screen stocks based on PE ratio
-    # and industry sector. Then filter results based on market cap
-    # and shares outstanding. We limit the number of results to
-    # num_stocks and return the data in descending order.
-
-    context.pipeline_data = pipeline_output('fundamentals')
-    fundamental_df = make_pipeline()
-
-    #fundamental_df = get_fundamentals(
+     #fundamental_df = get_fundamentals(
     #    query(
     #        # put your query in here by typing "fundamentals."
     #        fundamentals.valuation_ratios.pe_ratio,
@@ -142,6 +113,44 @@ def before_trading_start(context, data):
     context.fundamental_df = fundamental_df[context.stocks]
 
 
+    pe_ratio = 3
+    sector_code = 3
+    market_cap = 3
+    shares_outstanding = 3
+    fundamentals = Pipeline(
+        columns={
+            'morningstar_sector_code': sector_code,
+            'pe_ratio': pe_ratio,
+            'market_cap': market_cap,
+            'shares_outstanding': shares_outstanding,
+        },
+        screen={
+            market_cap is not None,
+            shares_outstanding is not None,
+        }
+    )
+    return fundamentals
+
+
+"""
+Called before the start of each trading day.  Runs the
+fundamentals query and saves the matching securities into
+context.fundamentals_df.
+"""
+
+
+def before_trading_start(context, data):
+    # May need to increase the number of stocks
+    num_stocks = 50
+
+    # Setup SQLAlchemy query to screen stocks based on PE ratio
+    # and industry sector. Then filter results based on market cap
+    # and shares outstanding. We limit the number of results to
+    # num_stocks and return the data in descending order.
+
+    context.pipeline_data = pipeline_output('fundamentals')
+
+
 def create_weights(stocks):
     """
         Takes in a list of securities and weights them all equally
@@ -183,5 +192,5 @@ def rebalance(context, data):
 
 def record_positions(context, data):
     # track how many positions we're holding
-    record(num_positions = len(context.portfolio.positions))
+    record(num_positions=len(context.portfolio.positions))
 

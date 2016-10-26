@@ -1,0 +1,3 @@
+{
+  "tests/test_unit.py::TestDummy::()::test_dummy_no_input": true
+}
