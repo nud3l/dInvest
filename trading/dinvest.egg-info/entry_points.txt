@@ -1,4 +1,0 @@
-[console_scripts]
-recommender = recommender.InvestHandler:main
-trader = trader.TradeHandler:main
-
