@@ -1,2 +1,3 @@
 *.pyc
 /venv/
+/dinvest.egg-info/

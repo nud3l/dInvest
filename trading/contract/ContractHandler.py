@@ -22,9 +22,10 @@ class ContractHandler:
                     self.config['password'] = line.split('=')[1].rstrip('\n')
 
         # Load current balance of account
-        self.web3 = Web3(RPCProvider(host='localhost', port='30303'))
-        self.config['balance'] = 100
-        # self.config['balance'] = self.web3.eth.getBalance(self.config['account'])
+        self.web3 = Web3(RPCProvider(host='localhost', port='8545'))
+        self.config['balance'] = self.web3.eth.getBalance(self.config['account'])
+        # For testing without Ethereum use
+        # self.config['balance'] = 100
 
     def exclude(self):
         # call contract function to get blacklist

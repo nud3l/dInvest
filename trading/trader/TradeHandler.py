@@ -1,6 +1,7 @@
 # TODO: How to execute the same strategy twice in case new strategies are rejected?
-import time
+from datetime import datetime, timedelta
 from subprocess import call
+from sys import path
 from contract.ContractHandler import ContractHandler
 from contract import EtherConversion
 
@@ -8,13 +9,20 @@ from contract import EtherConversion
 class TradeHandler:
     def __init__(self, contract, startdate):
         self.startdate = startdate
-        self.enddate = time.strftime("%Y-%m-%d")
+        yesterday = datetime.today() - timedelta(days=2)
+        self.enddate = yesterday.strftime('%Y-%m-%d')
         self.capital = EtherConversion.convert(contract['balance'])
         self.algorithm = 'buyapple.py'
+        self.resultpath = path.join(
+                str(path.insert(0, path.abspath('..'))),
+                'analysis',
+                'results',
+                'value{}.pickle'.format(self.enddate)
+        )
 
     def trade(self):
-        command = 'zipline run -f {} --start {} --end {} -o value{}.pickle'.\
-            format(self.algorithm, self.startdate, self.enddate, self.enddate)
+        command = 'zipline run -f {} --start {} --end {} -o {}'.\
+            format(self.algorithm, self.startdate, self.enddate, self.resultpath)
         call(command, shell=True)
 
 
