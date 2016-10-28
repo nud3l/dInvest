@@ -83,7 +83,7 @@ contract HedgeContract1 {
 
     // TODO - existing investment?
     // 3, 1 to change
-    investments.push(Investment(msg.sender, msg.value, msg.value, 0, 0, 3, 1, companies));
+    investments.push(Investment(msg.sender, msg.value, 0, 3, 1, companies));
 
     // Publish event
     NewInvestmentByUser(msg.sender, msg.value);
