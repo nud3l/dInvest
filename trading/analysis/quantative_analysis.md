@@ -268,7 +268,7 @@ plt.show()
 
 
 
-![png](output_6_1.png)
+![png](pics/output_6_1.png)
 
 
 As we can see our algorithm does not outperform the benchmark. Thus, let us take a deeper look into our distribution of long and short values in the portfolio and our overall return.
@@ -285,7 +285,7 @@ plt.show()
 ```
 
 
-![png](output_8_0.png)
+![png](pics/output_8_0.png)
 
 
 As we can see from the above figure, our algorithm performs quite well at the beginning. Around mid of October we see that the value which is bound in short investments starts to increase faster then our long investments. From the benchmark in the previous figure we have seen that the overall market increases. However, the algorithm holds primarily values that predict a decreasing market. As a first result, the RSI seems not to be a very well predictor of the actual value and the market behaviour. As we ran the simulation only for 2 months, this might only be true for that period of time. In a next step, we would need to analyse it over a longer period of time and go into depths of how RSI is calculated. Since we do not use RSI in our final algorithm, we will exclude this analysis here.
@@ -307,7 +307,7 @@ plt.show()
 ```
 
 
-![png](output_11_0.png)
+![png](pics/output_11_0.png)
 
 
 From the above figure we see the Sharpe ratio as well as the three components the ratio is calculated from: algo_volatility (the standard deviation of asset return), algorithm_period_return and benchmark_period_return. Our algrithm performs quite poorly in terms of Sharpe ratio as overall performance is worse than the benchmark and the volatility of the return increases over time due to our losses.
@@ -336,7 +336,7 @@ plt.show
 
 
 
-![png](output_14_1.png)
+![png](pics/output_14_1.png)
 
 
 The figure above shows that the alpha value is decreasing overtime and confirms our observations earlier: our algorithm performs quite poorly in comparison to the S&P500.
@@ -369,7 +369,7 @@ plt.show()
 
 
 
-![png](output_17_2.png)
+![png](pics/output_17_2.png)
 
 
 
