@@ -658,7 +658,7 @@ plt.show()
 ![png](pics/output_21_1.png)
 
 
-Generally the standard deviation of our measurements increases when we go from monthly, to weekly and then to a daily view. This is primarily caused by having more data points the finer the date granularity. However, with the Sharpe ratio it is quite interesting to see, that the weekly and daily standard devition stays quite similar.
+Generally the standard deviation of our measurements increases when we go from monthly, to weekly and then to a daily view. This is primarily caused by having more data points the finer the date granularity. However, with the Sharpe ratio it is quite interesting to see, that the weekly and daily standard deviation stays quite similar.
 
 
 ```python
@@ -671,4 +671,4 @@ print('Standard deviation\nWeekly Sharpe: {}\nDaily: Sharpe {}'.format(stdev(wee
     Daily: Sharpe 3.285653294106114
 
 
-The other measurements are less interseting and more data would be required to give a better view on their behaviour in relation to the time perspective. Especially, since the return of the algorithm more or less constantly falls behind the benchmark, the monthly indicators give a quite good representation of the overall trend. Simulating the algorithm for a year or more would however increase their meaning.
+The other measurements are less interesting and more data would be required to give a better view on their behaviour in relation to the time perspective. Especially, since the return of the algorithm more or less constantly falls behind the benchmark, the monthly indicators give a quite good representation of the overall trend. Simulating the algorithm for a year or more would however increase their meaning.
