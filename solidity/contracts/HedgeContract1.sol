@@ -194,7 +194,7 @@ contract HedgeContract1 {
   }
 
   // Withdrawal by user
-  function withdrawalUser(uint withdrawAmount) public returns (bool)
+  function withdrawalUser() public returns (bool)
   {
     for(uint x = 0; x < investments.length; x++) {
       if (msg.sender == investments[x].investor) {
