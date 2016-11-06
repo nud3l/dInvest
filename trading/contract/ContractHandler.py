@@ -31,10 +31,6 @@ class ContractHandler:
             self.abi = json.load(abi_definition)
         self.contract = self.web3.eth.contract(self.abi, self.contract_address)
 
-    def getCurrentBalance(self):
-        current_balance = self.web3.eth.getBalance(self.trading_account)
-        return current_balance
-
     def setCurrentBalance(self, trading_result):
         # trading result represents the profit/loss as a float, e.g. 20% profit
         # would be represented by the float 0.2
@@ -55,10 +51,11 @@ class ContractHandler:
             transaction_id = self.web3.eth.sendTransaction(transaction)
             return 'Updated balance with transaction {}'.format(transaction_id)
 
-    def getUSDfromWei(self, wei_balance):
+    def getCurrentBalance(self):
         r = requests.get('https://coinmarketcap-nexuist.rhcloud.com/api/eth')
         c = r.json()
         conversion = c.get('price').get('usd')
+        wei_balance = self.web3.eth.getBalance(self.trading_account)
         ether_balance = Web3.fromWei(wei_balance, unit='ether')
         return conversion * float(ether_balance)
 

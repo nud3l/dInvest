@@ -2,8 +2,10 @@
 from datetime import datetime, timedelta
 import schedule
 from subprocess import call
-from os import path
+from os import path, environ
 from time import sleep
+import wget
+import zipfile
 
 
 class TradeHandler:
@@ -21,6 +23,7 @@ class TradeHandler:
                 'analysis',
                 'results',
         )
+        self.quandl_api_key = environ['QUANDL_API_KEY']
 
     def getTrader(self):
         enddate = self.getCurrentDate()
@@ -30,7 +33,22 @@ class TradeHandler:
             format(self.algorithm, self.startdate, enddate, resultfile)
         call(command, shell=True)
 
+    def getData(self):
+        data_path = path.join(
+                path.join(path.dirname(path.realpath(__file__)), '..'),
+                'recommender',
+                'data',
+                'fundamentals'
+        )
+        # Download latest full fundamentals dataset (~ 5 MB)
+        url = 'https://www.quandl.com/api/v3/databases/SF0/data?auth_token={}'.format(self.quandl_api_key)
+        fundamentals_zip = wget.download(url)
+        # Extract file with format SF0_YYYYMMDD.csv
+        with zipfile.ZipFile(path.join(data_path, fundamentals_zip), 'r') as zip_ref:
+            zip_ref.extractall()
+
     def executeTrader(self):
+        schedule.every().day.at("6:00").do(self.getData)
         schedule.every().day.at("6:30").do(self.getTrader)
         try:
             while True:

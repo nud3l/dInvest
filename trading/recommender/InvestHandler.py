@@ -7,6 +7,7 @@ Adjusted Graham Fundamentals trading algorithm (based on https://www.quantopian.
 4. Every week exit all the positions before entering new ones
 5. Log the positions that we need
 """
+from os import path
 from zipline.api import (
     attach_pipeline,
     pipeline_output,
@@ -17,6 +18,9 @@ from zipline.api import (
     time_rules,
     )
 from zipline.pipeline import Pipeline
+
+from recommender.BlacklistHandler import Blacklist
+from recommender.FundamentalsHandler import PeRatio, MarketCap, SectorCode, SectorCodeFilter, SharesOutstanding
 from contract.ContractHandler import ContractHandler
 
 
@@ -30,21 +34,8 @@ def initialize(context):
     # Number of sectors to go long in
     context.sect_numb = 2
 
-    # TODO: Get section mappings from pipeline and exclude unwanted industries/companies
     # Sector mappings
-    context.sector_mappings = {
-       101.0: "Basic Materials",
-       102.0: "Consumer Cyclical",
-       103.0: "Financial Services",
-       104.0: "Real Estate",
-       205.0: "Consumer Defensive",
-       206.0: "Healthcare",
-       207.0: "Utilites",
-       308.0: "Communication Services",
-       309.0: "Energy",
-       310.0: "Industrials",
-       311.0: "Technology"
-    }
+    context.sector_mappings = get_sectors()
 
     # Rebalance weekly on the first day of the week at market open
     schedule_function(rebalance,
@@ -56,72 +47,27 @@ def initialize(context):
                       time_rule=time_rules.market_close())
 
     # Register pipeline
-    fundamental_df = make_pipeline()
+    fundamental_df = make_pipeline(context)
     attach_pipeline(fundamental_df, 'fundamentals')
 
 
 #  Create a fundamentals data pipeline
-def make_pipeline():
-     #fundamental_df = get_fundamentals(
-    #    query(
-    #        # put your query in here by typing "fundamentals."
-    #        fundamentals.valuation_ratios.pe_ratio,
-    #        fundamentals.asset_classification.morningstar_sector_code
-    #    )
-    #    .filter(fundamentals.valuation.market_cap != None)
-    #    .filter(fundamentals.valuation.shares_outstanding != None)
-    #    .order_by(fundamentals.valuation.market_cap.desc())
-    #    .limit(num_stocks)
-    #)
+def make_pipeline(context):
 
-    # Find sectors with the highest average PE
-    #sector_pe_dict = {}
-    #for stock in fundamental_df:
-    #    sector = fundamental_df[stock]['morningstar_sector_code']
-    #    pe = fundamental_df[stock]['pe_ratio']
-
-    #    # If it exists add our pe to the existing list.
-    #    # Otherwise don't add it.
-    #    if sector not in sector_pe_dict:
-    #      sector_pe_dict[sector] = []
-
-    #    sector_pe_dict[sector].append(pe)
-
-    # Find average PE per sector
-    #sector_pe_dict = dict([
-    #    (sectors, np.average(sector_pe_dict[sectors]))
-    #    for sectors in sector_pe_dict
-    #    if len(sector_pe_dict[sectors]) > 0
-    #])
-
-    # Sort in ascending order
-    #sectors = sorted(
-    #              sector_pe_dict,
-    #              key=lambda x: sector_pe_dict[x],
-    #              reverse=True
-    #          )[:context.sect_numb]
-
-    # Filter out only stocks with that particular sector
-    # context.stocks = [
-    #    stock for stock in fundamental_df
-    #    if fundamental_df[stock]['morningstar_sector_code'] in sectors
-    # ]
-
-    # Initialize a context.sectors variable
-    # context.sectors = [context.sector_mappings[sect] for sect in sectors]
-
-    # Update context.fundamental_df with the securities (and pe_ratio)
-    # that we need
-    # context.fundamental_df = fundamental_df[context.stocks]
+    # Get blacklist of companies
+    blacklist = context.contract.getBlacklist()
+    blacklist_filter = Blacklist(blacklist)
 
     # pe_ratio = close price / earnings per share
-    pe_ratio = 3
+    pe_ratio = PeRatio()
     # mapping of companies to industry sectors
-    sector_code = 3
+    sector_code = SectorCode()
     # market_cap = price * total shares outstanding (at e.g. closing)
-    market_cap = 3
+    market_cap = MarketCap()
     # total shares outstanding reported by the company
-    shares_outstanding = 3
+    shares_outstanding = SharesOutstanding()
+    # Filter two most profitable sectors
+    sector_filter = SectorCodeFilter()
 
     fundamentals = Pipeline(
         columns={
@@ -131,7 +77,9 @@ def make_pipeline():
             'shares_outstanding': shares_outstanding,
         },
         screen={
-            market_cap is not None,
+            blacklist_filter,
+            sector_filter,
+            market_cap,
             shares_outstanding is not None,
         }
     )
@@ -162,7 +110,6 @@ def create_weights(stocks):
         return weight
 
 
-# TODO: This needs to go to TradeHandler in the future
 def rebalance(context, data):
     # Exit all positions before starting new ones
     for stock in context.portfolio.positions:
@@ -187,3 +134,11 @@ def record_positions(context, data):
     # track how many positions we're holding
     record(num_positions=len(context.portfolio.positions))
 
+
+def get_sectors():
+    sectors = dict()
+    with open(path.join('data', 'fundamentals', 'Siccodes48.txt'), 'r') as sectorfile:
+        for line in sectorfile:
+            single_sector = line.split(',', maxsplit=1)
+            sectors[int(single_sector[0])] = single_sector[1].rstrip()
+    return sectors
