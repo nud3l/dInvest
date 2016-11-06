@@ -17,10 +17,12 @@ from zipline.api import (
     time_rules,
     )
 from zipline.pipeline import Pipeline
-import numpy as np
+from contract.ContractHandler import ContractHandler
 
 
 def initialize(context):
+    # Ethereum contract
+    context.contract = ContractHandler()
     # Dictionary of stocks and their respective weights
     context.stock_weights = {}
     # Count of days before rebalancing
@@ -28,11 +30,7 @@ def initialize(context):
     # Number of sectors to go long in
     context.sect_numb = 2
 
-    # Register pipeline
-    fundamental_df = make_pipeline()
-    attach_pipeline(fundamental_df, 'fundamentals')
-
-    # TODO: Get section mappings from pipeline and exclude unwanted industries
+    # TODO: Get section mappings from pipeline and exclude unwanted industries/companies
     # Sector mappings
     context.sector_mappings = {
        101.0: "Basic Materials",
@@ -48,7 +46,7 @@ def initialize(context):
        311.0: "Technology"
     }
 
-    # Rebalance monthly on the first day of the week at market open
+    # Rebalance weekly on the first day of the week at market open
     schedule_function(rebalance,
                       date_rule=date_rules.week_start(),
                       time_rule=time_rules.market_open())
@@ -56,6 +54,10 @@ def initialize(context):
     schedule_function(record_positions,
                       date_rule=date_rules.week_start(),
                       time_rule=time_rules.market_close())
+
+    # Register pipeline
+    fundamental_df = make_pipeline()
+    attach_pipeline(fundamental_df, 'fundamentals')
 
 
 #  Create a fundamentals data pipeline
@@ -73,53 +75,57 @@ def make_pipeline():
     #)
 
     # Find sectors with the highest average PE
-    sector_pe_dict = {}
-    for stock in fundamental_df:
-        sector = fundamental_df[stock]['morningstar_sector_code']
-        pe = fundamental_df[stock]['pe_ratio']
+    #sector_pe_dict = {}
+    #for stock in fundamental_df:
+    #    sector = fundamental_df[stock]['morningstar_sector_code']
+    #    pe = fundamental_df[stock]['pe_ratio']
 
-        # If it exists add our pe to the existing list.
-        # Otherwise don't add it.
-        if sector not in sector_pe_dict:
-          sector_pe_dict[sector] = []
+    #    # If it exists add our pe to the existing list.
+    #    # Otherwise don't add it.
+    #    if sector not in sector_pe_dict:
+    #      sector_pe_dict[sector] = []
 
-        sector_pe_dict[sector].append(pe)
+    #    sector_pe_dict[sector].append(pe)
 
     # Find average PE per sector
-    sector_pe_dict = dict([
-        (sectors, np.average(sector_pe_dict[sectors]))
-        for sectors in sector_pe_dict
-        if len(sector_pe_dict[sectors]) > 0
-    ])
+    #sector_pe_dict = dict([
+    #    (sectors, np.average(sector_pe_dict[sectors]))
+    #    for sectors in sector_pe_dict
+    #    if len(sector_pe_dict[sectors]) > 0
+    #])
 
     # Sort in ascending order
-    sectors = sorted(
-                  sector_pe_dict,
-                  key=lambda x: sector_pe_dict[x],
-                  reverse=True
-              )[:context.sect_numb]
+    #sectors = sorted(
+    #              sector_pe_dict,
+    #              key=lambda x: sector_pe_dict[x],
+    #              reverse=True
+    #          )[:context.sect_numb]
 
     # Filter out only stocks with that particular sector
-    context.stocks = [
-        stock for stock in fundamental_df
-        if fundamental_df[stock]['morningstar_sector_code'] in sectors
-    ]
+    # context.stocks = [
+    #    stock for stock in fundamental_df
+    #    if fundamental_df[stock]['morningstar_sector_code'] in sectors
+    # ]
 
     # Initialize a context.sectors variable
-    context.sectors = [context.sector_mappings[sect] for sect in sectors]
+    # context.sectors = [context.sector_mappings[sect] for sect in sectors]
 
     # Update context.fundamental_df with the securities (and pe_ratio)
     # that we need
-    context.fundamental_df = fundamental_df[context.stocks]
+    # context.fundamental_df = fundamental_df[context.stocks]
 
-
+    # pe_ratio = close price / earnings per share
     pe_ratio = 3
+    # mapping of companies to industry sectors
     sector_code = 3
+    # market_cap = price * total shares outstanding (at e.g. closing)
     market_cap = 3
+    # total shares outstanding reported by the company
     shares_outstanding = 3
+
     fundamentals = Pipeline(
         columns={
-            'morningstar_sector_code': sector_code,
+            'sector_code': sector_code,
             'pe_ratio': pe_ratio,
             'market_cap': market_cap,
             'shares_outstanding': shares_outstanding,
@@ -142,19 +148,13 @@ context.fundamentals_df.
 def before_trading_start(context, data):
     # May need to increase the number of stocks
     num_stocks = 50
-
-    # Setup SQLAlchemy query to screen stocks based on PE ratio
-    # and industry sector. Then filter results based on market cap
-    # and shares outstanding. We limit the number of results to
-    # num_stocks and return the data in descending order.
-
-    context.pipeline_data = pipeline_output('fundamentals')
+    context.fundamental_df = pipeline_output('fundamentals')
+    # get current balance to determine capital_base
+    context.capital_base = context.contract.getBalance()
 
 
 def create_weights(stocks):
-    """
-        Takes in a list of securities and weights them all equally
-    """
+    # Takes in a list of securities and weights them all equally
     if len(stocks) == 0:
         return 0
     else:
@@ -162,14 +162,12 @@ def create_weights(stocks):
         return weight
 
 
-# This needs to go to TradeHandler
+# TODO: This needs to go to TradeHandler in the future
 def rebalance(context, data):
     # Exit all positions before starting new ones
     for stock in context.portfolio.positions:
         if stock not in context.fundamental_df and data.can_trade(stock):
             order_target_percent(stock, 0)
-
-    # log.info("The two sectors we are ordering today are %r" % context.sectors)
 
     # Create weights for each stock
     weight = create_weights(context.stocks)
@@ -179,13 +177,8 @@ def rebalance(context, data):
         if data.can_trade(stock):
             if weight != 0:
                 code = context.sector_mappings[
-                     context.fundamental_df[stock]['morningstar_sector_code']
+                     context.fundamental_df[stock]['sector_code']
                 ]
-
-                # log.info(
-                #    "Ordering %0.0f%% percent of %s in %s" %
-                #    (weight * 100, stock.symbol, code)
-                # )
 
             order_target_percent(stock, weight)
 
