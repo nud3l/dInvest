@@ -9,6 +9,7 @@ Adjusted Graham Fundamentals trading algorithm (based on https://www.quantopian.
 """
 from os import path
 from zipline.api import (
+    set_do_not_order_list,
     attach_pipeline,
     pipeline_output,
     order_target_percent,
@@ -54,10 +55,6 @@ def initialize(context):
 #  Create a fundamentals data pipeline
 def make_pipeline(context):
 
-    # Get blacklist of companies
-    blacklist = context.contract.getBlacklist()
-    blacklist_filter = Blacklist(blacklist)
-
     # pe_ratio = close price / earnings per share
     pe_ratio = PeRatio()
     # mapping of companies to industry sectors
@@ -77,7 +74,6 @@ def make_pipeline(context):
             'shares_outstanding': shares_outstanding,
         },
         screen={
-            blacklist_filter,
             sector_filter,
             market_cap,
             shares_outstanding is not None,
@@ -97,6 +93,9 @@ def before_trading_start(context, data):
     # May need to increase the number of stocks
     num_stocks = 50
     context.fundamental_df = pipeline_output('fundamentals')
+    # Get blacklist of companies which returns a list of SIDs
+    blacklist = context.contract.getBlacklist()
+    set_do_not_order_list(blacklist)
     # get current balance to determine capital_base
     context.capital_base = context.contract.getBalance()
 
