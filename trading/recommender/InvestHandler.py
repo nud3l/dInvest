@@ -7,7 +7,8 @@ Adjusted Graham Fundamentals trading algorithm (based on https://www.quantopian.
 4. Every week exit all the positions before entering new ones
 5. Log the positions that we need
 """
-from os import path
+from os import path, environ
+
 from zipline.api import (
     set_do_not_order_list,
     attach_pipeline,
@@ -19,8 +20,10 @@ from zipline.api import (
     time_rules,
     )
 from zipline.pipeline import Pipeline
+from zipline.pipeline.data import USEquityPricing
 
-from recommender.BlacklistHandler import Blacklist
+import quandl
+
 from recommender.FundamentalsHandler import PeRatio, MarketCap, SectorCode, SectorCodeFilter, SharesOutstanding
 from contract.ContractHandler import ContractHandler
 
@@ -28,10 +31,22 @@ from contract.ContractHandler import ContractHandler
 def initialize(context):
     # Ethereum contract
     context.contract = ContractHandler()
+
+    # Set Quandl API key and import fundamentals data from quandl
+    quandl.ApiConfig.api_key = environ['QUANDL_API_KEY']
+    context.fundamentals_earnings = quandl.get_table('SF0', qopts={'columns': ['ticker']}).\
+        to_numpy()
+
+    # Get blacklist of companies which returns a list of SIDs
+    blacklist = context.contract.getBlacklist()
+    set_do_not_order_list(blacklist)
+
     # Dictionary of stocks and their respective weights
     context.stock_weights = {}
+
     # Count of days before rebalancing
     context.days = 0
+
     # Number of sectors to go long in
     context.sect_numb = 2
 
@@ -56,7 +71,7 @@ def initialize(context):
 def make_pipeline(context):
 
     # pe_ratio = close price / earnings per share
-    pe_ratio = PeRatio()
+    pe_ratio = PeRatio([USEquityPricing.close, context.fundamentals_quandl])
     # mapping of companies to industry sectors
     sector_code = SectorCode()
     # market_cap = price * total shares outstanding (at e.g. closing)
@@ -98,6 +113,8 @@ def before_trading_start(context, data):
     set_do_not_order_list(blacklist)
     # get current balance to determine capital_base
     context.capital_base = context.contract.getBalance()
+    # update quandl fundamentals
+    context.fundamentals_quandl = quandl.Datatable('SF0').data().to_numpy()
 
 
 def create_weights(stocks):
@@ -136,7 +153,7 @@ def record_positions(context, data):
 
 def get_sectors():
     sectors = dict()
-    with open(path.join('data', 'fundamentals', 'Siccodes48.txt'), 'r') as sectorfile:
+    with open(path.join('data', 'fundamentals', 'Famacodes48.txt'), 'r') as sectorfile:
         for line in sectorfile:
             single_sector = line.split(',', maxsplit=1)
             sectors[int(single_sector[0])] = single_sector[1].rstrip()

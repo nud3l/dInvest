@@ -1,12 +1,12 @@
-1,Agriculture
-2,Food Products
-3,Candy & Soda
-4,Beer & Liquor
-5,Tobacco Products
-6,Recreation
-7,Entertainment
-8,Printing and Publishing
-9,Consumer Goods
+01,Agriculture
+02,Food Products
+03,Candy & Soda
+04,Beer & Liquor
+05,Tobacco Products
+06,Recreation
+07,Entertainment
+08,Printing and Publishing
+09,Consumer Goods
 10,Apparel
 11,Healthcare
 12,Medical Equipment
