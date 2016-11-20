@@ -1,10 +1,6 @@
 pragma solidity ^0.4.2;
 
-import "strings.sol";
-
 contract HedgeContract1 {
-  using strings for *;
-
   struct Investment {
     address investor;
     uint value;
@@ -13,7 +9,7 @@ contract HedgeContract1 {
     uint withdrawal;
     uint period; // in days
     uint withdrawalLimit;
-    string blackListCompanies;
+    uint8[] sectors; //TODO limit size
   }
 
   address public creator;
@@ -31,6 +27,7 @@ contract HedgeContract1 {
 
   Investment[] public investments;
   mapping (address => uint) pendingWithdrawals;
+  mapping (uint8 => uint8) blackList;
 
   // Events - publicize actions to external listeners
   event InvestmentOfferByBot(uint amount);
@@ -76,21 +73,25 @@ contract HedgeContract1 {
   }
 
   // Create a new investment
-  function createInvestment(string companies) payable {
+  function createInvestment(uint8[] sectorList) payable {
     if (msg.value < minimumInvestment) {
       throw;
     }
 
     // TODO - existing investment?
     // 3, 1 to change
-    investments.push(Investment(msg.sender, msg.value, 0, 3, 1, companies));
+    investments.push(Investment(msg.sender, msg.value, 0, 3, 1, sectorList));
+
+    for(uint x = 0; x < sectorList.length; x++) {
+        blackList[sectorList[x]] = sectorList[x];
+    }
 
     // Publish event
     NewInvestmentByUser(msg.sender, msg.value);
   }
 
   // Investment opportunity - only agent
-  function investOffer(uint amount, string companies)
+  function investOffer(uint amount, uint8[] sectorList)
     onlyBy(investAgent)
   {
     if (this.balance < amount) {
@@ -98,15 +99,9 @@ contract HedgeContract1 {
     }
 
     // TODO - implement criteria here
-    var s = companies.toSlice();
-    var delim = ",".toSlice();
-    string[] memory parts = new string[](s.count(delim));
-    for(uint i = 0; i < parts.length; i++) {
-        parts[i] = s.split(delim).toString();
-    }
-    bool criteria = blackListCompaniesExists(parts);
+    bool criteria = blackListSectorExists(sectorList);
 
-    if (!criteria) {
+    if (true) {
       pendingWithdrawals[buyAgent] += amount;
       originalInvestment = amount;
       InvestmentOfferByBot(amount); // fire event
@@ -144,22 +139,20 @@ contract HedgeContract1 {
       investments[x].withdrawal = investments[x].value / originalInvestment * msg.value; // TODO - Check truncations
       investments[x].value = 0;
     }
+    clearBlacklistMapping();
   }
 
-  function blackListCompaniesExists(string[] companies) internal constant returns (bool)
+  function clearBlacklistMapping() internal constant
   {
-    bool found = false;
-    var blackListCompanies = ",";
-
-    for(uint x = 0; x < investments.length; x++) {
-      blackListCompanies = blackListCompanies.toSlice().concat(investments[x].blackListCompanies.toSlice()).toSlice().concat(",".toSlice());
+    for(uint8 x = 0; x < 48; x++) {
+      blackList[x] = 0;
     }
+  }
 
-    for(uint i = 0; i < companies.length; i++) {
-      var comparison = ",".toSlice().concat(companies[i].toSlice()).toSlice().concat(",".toSlice());
-      found = blackListCompanies.toSlice().contains(comparison.toSlice());
-
-      if (found) {
+  function blackListSectorExists(uint8[] companies) internal constant returns (bool)
+  {
+    for(uint x = 0; x < companies.length; x++) {
+      if(blackList[companies[x]] != address(0x0) || blackList[companies[x]] != 0) {
           return true;
       }
     }
@@ -167,19 +160,16 @@ contract HedgeContract1 {
     return false;
   }
 
-  function blackListCompanies() constant returns (string)
+  function blackListCompanies() constant returns (uint8[48])
   {
-    var s = ",";
-
+    uint8[48] arr;
     for(uint x = 0; x < investments.length; x++) {
-      s = s.toSlice().concat(investments[x].blackListCompanies.toSlice()).toSlice().concat(",".toSlice());
-
-      /*if(x != investments.length - 1) {
-        s = s.toSlice().concat(",".toSlice());
-      }*/
+        for(uint y = 0; y < investments[x].sectors.length; y++) {
+            arr[investments[x].sectors[y] - 1] = investments[x].sectors[y];
+        }
     }
 
-    return s;
+    return arr;
   }
 
   function availableForInvestment() constant returns (uint)
