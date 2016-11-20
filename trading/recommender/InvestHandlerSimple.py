@@ -5,11 +5,10 @@
 #    3. Every month exit all the positions before entering new ones at the month
 #    4. Log the positions that we need
 from csv import DictReader
-from os import path, environ, remove
+from os import path, remove
 from datetime import datetime
-import pandas as pd
 import numpy as np
-import talib
+import pandas as pd
 import wget
 import json
 
@@ -23,16 +22,15 @@ from zipline.api import (
     time_rules,
     )
 from zipline.errors import SymbolNotFound
-from zipline.pipeline.data import USEquityPricing
 
 from contract.ContractHandler import ContractHandler
 
 
 def initialize(context):
     # Ethereum contract
-    # context.contract = ContractHandler()
-    # Get blacklist of companies which returns a list of sectors to exclude
-    # blacklist = context.contract.getBlacklist()
+    context.contract = ContractHandler()
+    # Get blacklist of sectors which returns a list of codes
+    blacklist = context.contract.getBlacklist()
 
     # Dictionary of stocks and their respective weights
     context.stock_weights = {}
@@ -41,7 +39,8 @@ def initialize(context):
     # Number of sectors to go long in
     context.sect_numb = 2
     # Sector mappings
-    context.sector_mappings = get_sectors()
+    context.sector_mappings = get_sectors(key='code')
+    context.ticker_sector_dict = get_sector_code()
 
     # TODO: Update this accordingly (weekly?)
     # Rebalance monthly on the first day of the month at market open
@@ -77,69 +76,106 @@ def rebalance(context, data):
 def before_trading_start(context, data):
     num_stocks = 50
 
-    # today = datetime.today().strftime('%Y%m%d')
-    today = '20161106'
     fundamentals = dict()
-    with open(path.join('data', 'fundamentals', 'SF0_{}.csv'.format(today)), 'r') as fundamentals_csv:
-        reader = DictReader(fundamentals_csv, ['ticker_indicator_dimension', 'date', 'value'])
-        lastticker = ''
-        ticker_sector_dict = get_sector_code()
+    with open(path.join('data', 'fundamentals', 'data.csv'), 'r') as fundamentals_csv:
+        reader = DictReader(fundamentals_csv, ['ticker', 'indicator', 'dimension', 'date', 'value'])
+        thisticker = ''
+
+        values = dict()
         for line in reader:
-            values = dict()
-            ticker, indicator, dimension = line['ticker_indicator_dimension'].split('_')
             try:
-                # Store most recent values in the ticker
-                if lastticker != ticker and lastticker:
-                    # add the sector code
-                    values['sector_code'] = ticker_sector_dict[lastticker]
-                    fundamentals[symbol(lastticker)] = values
-                    lastticker = ticker
+                symbol_ticker = symbol(line['ticker'])
+                if data.can_trade(symbol_ticker):
+                    # Store most recent values in the ticker
+                    if thisticker != symbol_ticker:
+                        if not thisticker:
+                            thisticker = symbol_ticker
+                        else:
+                            # add the sector code
+                            try:
+                                values['sector_code'] = context.ticker_sector_dict[thisticker]
+                                if values['sector_code'] and values['pe_ratio'] and values['market_cap']:
+                                    fundamentals[thisticker] = values
+                                values = dict()
+                            except KeyError:
+                                pass
+                            thisticker = symbol_ticker
 
-                # Select only data that was available at that time
-                date = data.current(symbol(ticker), "last_traded")
-                if date > datetime.strptime(line['date'], '%Y-%m-%d'):
-                    # Set PE Ratio
-                    if indicator in 'EPS' and float(line['value']) != 0:
-                        values['pe_ratio'] = line['value']
-                    # Set Market Cap
-                    elif indicator in 'SHARESWA' and float(line['value']) != 0:
-                        price = data.current(symbol(ticker), "price")
-                        totalshares = line['value']
-                        values['market_cap'] = price * totalshares
+                    # Select only data that was available at that time
+                    date = data.current(symbol_ticker, "last_traded").replace(tzinfo=None)
+                    if date > datetime.strptime(line['date'], '%Y-%m-%d'):
+                        # Set PE Ratio
+                        if line['indicator'] in 'EPS':
+                            values['pe_ratio'] = float(line['value'])
+                        # Set Market Cap
+                        elif line['indicator'] in 'SHARESWA':
+                            price = data.current(symbol_ticker, "price")
+                            totalshares = float(line['value'])
+                            market_cap = price * totalshares
+                            # Only consider stock with at least 1 million market cap
+                            if market_cap > 1000000:
+                                values['market_cap'] = price * totalshares
             except SymbolNotFound as e:
-                print(e)
-
+                pass
+    # convert dict to DataFrame
+    print(fundamentals)
+    fundamentals_df = pd.DataFrame.from_dict(fundamentals)
+    print(fundamentals_df)
     # Find sectors with the highest average PE
     sector_pe_dict = dict()
-    for stock in fundamentals:
-        sector = fundamentals[stock]['sector_code']
-        pe = fundamentals[stock]['pe_ratio']
+    for stock in fundamentals_df:
+        try:
+            sector = fundamentals_df[stock]['sector_code']
+            pe = fundamentals_df[stock]['pe_ratio']
 
-        # If it exists add our pe to the existing list.
-        # Otherwise don't add it.
-        if sector in sector_pe_dict:
+            # If it exists add our pe to the existing list.
+            # Otherwise don't add it.
+            if sector not in sector_pe_dict:
+                sector_pe_dict[sector] = []
+
             sector_pe_dict[sector].append(pe)
-        else:
-            sector_pe_dict[sector] = []
+        except KeyError as e:
+            print("KeyError on {} at stock {}".format(e, stock))
 
-    print(sector_pe_dict)
     # Find average PE per sector
-    sector_pe_dict = dict([(sectors, np.mean(sector_pe_dict[sectors],axis=0))
-                               for sectors in sector_pe_dict if len(sector_pe_dict[sectors]) > 0])
+    sector_pe_dict = dict([
+        (sectors, np.average(sector_pe_dict[sectors]))
+        for sectors in sector_pe_dict
+        if len(sector_pe_dict[sectors]) > 0
+    ])
+
+    print("Sector PE dict {}".format(sector_pe_dict))
+    # sector_pe_dict_avg = dict()
+    # for sector in sector_pe_dict:
+    #     if len(sector_pe_dict[sector]) > 0:
+    #         sector_pe_dict_avg[sector] = np.mean(sector_pe_dict[sector], axis=0)
 
     # Sort in ascending order
-    sectors = sorted(sector_pe_dict, key=lambda x: sector_pe_dict[x], reverse=True)[:context.sect_numb]
+    sectors = sorted(
+            sector_pe_dict,
+            key=lambda x: sector_pe_dict[x],
+            reverse=True
+    )[:context.sect_numb]
+
+    print("Sorted sectors {}".format(sectors))
+
     # Filter out only stocks with that particular sector
-    context.stocks = [stock for stock in fundamentals
-                      if fundamentals[stock]['sector_code'] in sectors]
+    context.stocks = [
+        stock for stock in fundamentals_df
+        if fundamentals_df[stock]['sector_code'] in sectors
+        ]
+
+    print("Stocks {}".format(context.stocks))
 
     # Initialize a context.sectors variable
     context.sectors = [context.sector_mappings[sect] for sect in sectors]
 
-    # Update context.fundamental_df with the securities (and pe_ratio) that we need
-    context.fundamental_df = fundamentals[context.stocks]
+    print("Sectors {}".format(context.sectors))
 
-    data.update_universe(context.fundamental_df.columns.values)
+    # Update context.fundamental_df with the securities (and pe_ratio) that we need
+    context.fundamental_df = fundamentals_df[context.stocks]
+
+    # context.update_universe(context.fundamental_df.columns.values)
 
 
 def create_weights(context, stocks):
@@ -161,17 +197,21 @@ def handle_data(context, data):
     pass
 
 
-def get_sectors():
+def get_sectors(key):
+    # get sectors based on key (either code or description)
     sectors = dict()
     with open(path.join('data', 'fundamentals', 'Famacodes48.txt'), 'r') as sectorfile:
         for line in sectorfile:
             single_sector = line.split(',', maxsplit=1)
-            sectors[single_sector[1].rstrip()] = int(single_sector[0])
+            if key in 'description':
+                sectors[single_sector[1].rstrip()] = int(single_sector[0])
+            elif key in 'code':
+                sectors[int(single_sector[0])] = single_sector[1].rstrip()
     return sectors
 
 
 def get_sector_code():
-    sectors = get_sectors()
+    sectors = get_sectors(key='description')
     sector_code = dict()
     url = "http://www.sharadar.com/meta/sf0-tickers.json"
     sf0tickers = wget.download(url)
