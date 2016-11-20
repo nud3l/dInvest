@@ -28,10 +28,12 @@ from contract.ContractHandler import ContractHandler
 
 def initialize(context):
     # Ethereum contract
-    context.contract = ContractHandler()
+    #context.contract = ContractHandler()
     # Get blacklist of sectors which returns a list of codes
-    blacklist = context.contract.getBlacklist()
+    #blacklist = context.contract.getBlacklist()
 
+    # Only run get_fundamentals when necessary based on the rebalance function
+    context.initial = True
     # Dictionary of stocks and their respective weights
     context.stock_weights = {}
     # Count of days before rebalancing
@@ -50,6 +52,10 @@ def initialize(context):
 
 
 def rebalance(context, data):
+    # update the fundamentals data
+    if not context.initial:
+        get_fundamentals(context, data)
+
     # Exit all positions before starting new ones
     for stock in context.portfolio.positions:
         if stock not in context.fundamental_df:
@@ -73,9 +79,8 @@ def rebalance(context, data):
     record(num_positions=len(context.fundamental_df))
 
 
-def before_trading_start(context, data):
-    num_stocks = 50
-
+def get_fundamentals(context, data):
+    print("Updating fundamentals data")
     fundamentals = dict()
     with open(path.join('data', 'fundamentals', 'data.csv'), 'r') as fundamentals_csv:
         reader = DictReader(fundamentals_csv, ['ticker', 'indicator', 'dimension', 'date', 'value'])
@@ -83,21 +88,25 @@ def before_trading_start(context, data):
 
         values = dict()
         for line in reader:
+            # print("Processing line {}".format(line))
             try:
                 symbol_ticker = symbol(line['ticker'])
                 if data.can_trade(symbol_ticker):
                     # Store most recent values in the ticker
                     if thisticker != symbol_ticker:
+                        # print("Processing {}".format(symbol_ticker))
                         if not thisticker:
                             thisticker = symbol_ticker
                         else:
                             # add the sector code
                             try:
-                                values['sector_code'] = context.ticker_sector_dict[thisticker]
+                                values['sector_code'] = context.ticker_sector_dict[thisticker.symbol]
                                 if values['sector_code'] and values['pe_ratio'] and values['market_cap']:
                                     fundamentals[thisticker] = values
+                                    # print("Adding {}".format(values))
                                 values = dict()
-                            except KeyError:
+                            except KeyError as e:
+                                # print("Error on adding {}".format(e))
                                 pass
                             thisticker = symbol_ticker
 
@@ -118,9 +127,7 @@ def before_trading_start(context, data):
             except SymbolNotFound as e:
                 pass
     # convert dict to DataFrame
-    print(fundamentals)
     fundamentals_df = pd.DataFrame.from_dict(fundamentals)
-    print(fundamentals_df)
     # Find sectors with the highest average PE
     sector_pe_dict = dict()
     for stock in fundamentals_df:
@@ -144,7 +151,6 @@ def before_trading_start(context, data):
         if len(sector_pe_dict[sectors]) > 0
     ])
 
-    print("Sector PE dict {}".format(sector_pe_dict))
     # sector_pe_dict_avg = dict()
     # for sector in sector_pe_dict:
     #     if len(sector_pe_dict[sector]) > 0:
@@ -157,25 +163,25 @@ def before_trading_start(context, data):
             reverse=True
     )[:context.sect_numb]
 
-    print("Sorted sectors {}".format(sectors))
-
     # Filter out only stocks with that particular sector
     context.stocks = [
         stock for stock in fundamentals_df
         if fundamentals_df[stock]['sector_code'] in sectors
         ]
 
-    print("Stocks {}".format(context.stocks))
-
     # Initialize a context.sectors variable
     context.sectors = [context.sector_mappings[sect] for sect in sectors]
-
-    print("Sectors {}".format(context.sectors))
 
     # Update context.fundamental_df with the securities (and pe_ratio) that we need
     context.fundamental_df = fundamentals_df[context.stocks]
 
     # context.update_universe(context.fundamental_df.columns.values)
+
+
+def before_trading_start(context, data):
+    if context.initial:
+        get_fundamentals(context, data)
+        context.initial = False
 
 
 def create_weights(context, stocks):
