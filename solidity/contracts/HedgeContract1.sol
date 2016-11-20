@@ -101,7 +101,7 @@ contract HedgeContract1 {
     // TODO - implement criteria here
     bool criteria = blackListSectorExists(sectorList);
 
-    if (true) {
+    if (!criteria) {
       pendingWithdrawals[buyAgent] += amount;
       originalInvestment = amount;
       InvestmentOfferByBot(amount); // fire event
@@ -139,6 +139,7 @@ contract HedgeContract1 {
       investments[x].withdrawal = investments[x].value / originalInvestment * msg.value; // TODO - Check truncations
       investments[x].value = 0;
     }
+    
     clearBlacklistMapping();
   }
 
@@ -149,10 +150,10 @@ contract HedgeContract1 {
     }
   }
 
-  function blackListSectorExists(uint8[] companies) internal constant returns (bool)
+  function blackListSectorExists(uint8[] sectors) internal constant returns (bool)
   {
-    for(uint x = 0; x < companies.length; x++) {
-      if(blackList[companies[x]] != address(0x0) || blackList[companies[x]] != 0) {
+    for(uint x = 0; x < sectors.length; x++) {
+      if(blackList[sectors[x]] != address(0x0) || blackList[sectors[x]] != 0) {
           return true;
       }
     }

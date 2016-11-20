@@ -24,13 +24,13 @@ contract('HedgeContract1', function(accounts) {
     });
 
     it("increasing users", function() {
-        var userScenarios = 10;
+        var userScenarios = 1;
 
         // Fix investment
         var investment = web3.toWei(2, "ether");
 
         // Fix black list
-        var blackList = "ABC,DEF,GHI";
+        var blackList = [1,2,3];
 
         var hc = HedgeContract1.deployed();
         var initialState = web3.evm.snapshot();
@@ -98,7 +98,7 @@ function investmentGasConsumption(maxUsers, hc, accounts, investment, blackList,
             }
 
             Promise.all(promises).then(function() {
-                makeInvestmentStrategy(hc, "OKS,ASD,COS", investmentOffer, gasVal, investAgentAddress) // Offer by invest agent
+                makeInvestmentStrategy(hc, [4,5,6], investmentOffer, gasVal, investAgentAddress) // Offer by invest agent
                     .then(withdrawBuyAgent(hc, gasVal, buyAgentAddress)) // Withdraw it - buy agent
                     .then(sendBuyAgent(hc, 1, 1, 1, 1, investmentOffer, gasVal, buyAgentAddress)) // Return investment - buy agent
                     .then(function() {
