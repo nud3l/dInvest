@@ -1,4 +1,4 @@
-plot(blacklist$V3, blacklist$V2, xlab = "No of users", ylab = "Gas consumed")
+plot(blacklist$V3, blacklist$V2, xlab = "No of user criteria", ylab = "Gas consumed")
 lo <- loess(blacklist$V2~blacklist$V3)
 lines(predict(lo), col='red', lwd=2)
 
