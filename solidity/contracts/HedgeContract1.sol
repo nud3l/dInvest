@@ -136,10 +136,10 @@ contract HedgeContract1 {
 
     // Contract need to divide ether according to the share
     for(uint x = 0; x < investments.length; x++) {
-      investments[x].withdrawal = investments[x].value / originalInvestment * msg.value; // TODO - Check truncations
+      investments[x].withdrawal = investments[x].value * msg.value / originalInvestment; // TODO - Check truncations
       investments[x].value = 0;
     }
-    
+
     clearBlacklistMapping();
   }
 
@@ -163,7 +163,7 @@ contract HedgeContract1 {
 
   function blackListCompanies() constant returns (uint8[48])
   {
-    uint8[48] arr;
+    uint8[48] memory arr;
     for(uint x = 0; x < investments.length; x++) {
         for(uint y = 0; y < investments[x].sectors.length; y++) {
             arr[investments[x].sectors[y] - 1] = investments[x].sectors[y];
