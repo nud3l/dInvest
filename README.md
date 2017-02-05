@@ -8,7 +8,5 @@ The project is structured in two parts.
 This project is a work in progress.
 
 ## ToDo
-- Finalize Ethereum contract
-- Optimize value investment algorithm
-- Run the solution with multiple test users for at least two weeks
-- Analyze the return/risk indicators and operational costs
+- Include investment agents to Ethereum
+- Experiment with ML based investment algorithms (potentially LSTMs, RNNs, and CNNs)
