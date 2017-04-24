@@ -24,13 +24,13 @@ contract('HedgeContract1', function(accounts) {
     });
 
     it("increasing users", function() {
-        var userScenarios = 1;
+        var userScenarios = 20;
 
         // Fix investment
         var investment = web3.toWei(2, "ether");
 
         // Fix black list
-        var blackList = [1,2,3];
+        var blackList = [4,5,6];
 
         var hc = HedgeContract1.deployed();
         var initialState = web3.evm.snapshot();
@@ -38,7 +38,7 @@ contract('HedgeContract1', function(accounts) {
         var userNoRange = Array.from(Array(userScenarios)).map((e, i) => i + 1);
         eachSeries(userNoRange, function(noOfUsers) {
             return investmentGasConsumption(noOfUsers, hc, accounts, investment, blackList, initialState).then(function(totalGas) {
-                // console.log(totalGas);
+                console.log(totalGas);
                 return;
             });
         });
@@ -51,25 +51,24 @@ contract('HedgeContract1', function(accounts) {
     //     var investment = web3.toWei(2, "ether");
     //
     //     // Fix no users
-    //     var noOfUsers = 5;
+    //     var noOfUsers = 10;
     //
     //     var hc = HedgeContract1.deployed();
     //     var initialState = web3.evm.snapshot();
     //
     //     var blackListCompanies = [blackListScenarios];
+    //     var max = 48;
+    //     var min = 4;
     //     for (var i = 0; i < blackListScenarios; i++) {
-    //         var str = '';
+    //         var str = [];
     //         for (var j = 0; j < i + 1; j++) {
-    //             str += Math.random().toString(36).substring(2, 5);
-    //
-    //             if (j != i) {
-    //                 str += ',';
-    //             }
+    //             str.push(Math.floor(Math.random() * (max - min + 1)) + min);
     //         }
     //         blackListCompanies[i] = str;
     //     }
     //
     //     eachSeries(blackListCompanies, function(blackList) {
+    //       // console.log(blackList);
     //         return investmentGasConsumption(noOfUsers, hc, accounts, investment, blackList, initialState).then(function(totalGas) {
     //             console.log(totalGas);
     //             return;
@@ -98,7 +97,7 @@ function investmentGasConsumption(maxUsers, hc, accounts, investment, blackList,
             }
 
             Promise.all(promises).then(function() {
-                makeInvestmentStrategy(hc, [4,5,6], investmentOffer, gasVal, investAgentAddress) // Offer by invest agent
+                makeInvestmentStrategy(hc, [1,2,3], investmentOffer, gasVal, investAgentAddress) // Offer by invest agent
                     .then(withdrawBuyAgent(hc, gasVal, buyAgentAddress)) // Withdraw it - buy agent
                     .then(sendBuyAgent(hc, 1, 1, 1, 1, investmentOffer, gasVal, buyAgentAddress)) // Return investment - buy agent
                     .then(function() {
@@ -113,9 +112,9 @@ function investmentGasConsumption(maxUsers, hc, accounts, investment, blackList,
                             for (var i = startBlockNumber + 1; i <= web3.eth.blockNumber; i++) {
                                 totalGas += outpusGas(i);
                             }
-                            gasBreakdown(startBlockNumber + 1, web3.eth.blockNumber, maxUsers);
+                            // gasBreakdown(startBlockNumber + 1, web3.eth.blockNumber, maxUsers);
                             web3.evm.revert(initialState);
-                            resolve(maxUsers + ',' + totalGas + ',' + blackList);
+                            resolve(maxUsers + ',' + totalGas + ',' + blackList.length);
                         });
                     })
                     .catch(function(err) {
