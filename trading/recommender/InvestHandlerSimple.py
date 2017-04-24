@@ -30,7 +30,9 @@ def initialize(context):
     # Ethereum contract
     #context.contract = ContractHandler()
     # Get blacklist of sectors which returns a list of codes
-    #blacklist = context.contract.getBlacklist()
+    #context.blacklist = context.contract.getBlacklist()
+    # for testing purpose without Ethereum exclude Defense, Beer & Alcohol, Tabacco and Coal
+    context.blacklist = [26.0, 4.0, 5.0, 29.0]
 
     # Only run get_fundamentals when necessary based on the rebalance function
     context.initial = True
@@ -121,8 +123,8 @@ def get_fundamentals(context, data):
                             price = data.current(symbol_ticker, "price")
                             totalshares = float(line['value'])
                             market_cap = price * totalshares
-                            # Only consider stock with at least 1 million market cap
-                            if market_cap > 1000000:
+                            # Only consider stock with at least 10 million market cap
+                            if market_cap > 10000000:
                                 values['market_cap'] = price * totalshares
             except SymbolNotFound as e:
                 pass
@@ -135,9 +137,9 @@ def get_fundamentals(context, data):
             sector = fundamentals_df[stock]['sector_code']
             pe = fundamentals_df[stock]['pe_ratio']
 
-            # If it exists add our pe to the existing list.
+            # If it exists and is not included in the blacklist add our pe to the existing list.
             # Otherwise don't add it.
-            if sector not in sector_pe_dict:
+            if (sector not in sector_pe_dict) and (sector not in context.blacklist):
                 sector_pe_dict[sector] = []
 
             sector_pe_dict[sector].append(pe)
